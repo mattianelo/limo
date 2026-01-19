@@ -1,0 +1,20 @@
+{
+    "name": "Limo Mod Manager Dev",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cmake-tools",
+                "tamasfe.even-better-toml"
+            ],
+            "settings": {
+                "cmake.configureOnOpen": true,
+                "cmake.buildDirectory": "${workspaceFolder}/build"
+            }
+        }
+    },
+    "remoteUser": "vscode"
+}
