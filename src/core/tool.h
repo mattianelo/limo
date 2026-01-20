@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "launcher.h"
 #include <filesystem>
 #include <json/json.h>
 #include <map>
@@ -180,6 +181,21 @@ public:
    * \return The overwrite command.
    */
   std::string getCommandOverwrite() const;
+  /*!
+   * \brief Returns the launcher type (Steam or Heroic).
+   * \return The launcher type.
+   */
+  LauncherType getLauncherType() const;
+  /*!
+   * \brief Returns the launcher identifier (appID for Steam, appName for Heroic).
+   * \return The identifier.
+   */
+  std::string getLauncherIdentifier() const;
+  /*!
+   * \brief Returns the Proton installation path (for Heroic launcher).
+   * \return The proton path.
+   */
+  std::filesystem::path getProtonPath() const;
 
 private:
   /*! \brief Name of the tool. */
@@ -209,6 +225,12 @@ private:
   std::string protontricks_arguments_;
   /*! \brief If not empty: Ignore all other settings and run this command directly. */
   std::string command_overwrite_ = "";
+  /*! \brief Launcher type (Steam or Heroic). */
+  LauncherType launcher_type_ = LauncherType::steam;
+  /*! \brief Launcher-specific identifier (numeric appID for Steam, appName for Heroic). */
+  std::string launcher_identifier_ = "";
+  /*! \brief Path to Proton installation (used for Heroic launcher). */
+  std::filesystem::path proton_path_;
 
   /*!
    * \brief Appends the given environment variables to the given command.

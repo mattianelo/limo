@@ -1,0 +1,14 @@
+{
+  "launcher": "heroic",
+  "appName": "Fallout4",
+  "title": "Fallout 4",
+  "deployers": [
+    {
+      "type": "plugin",
+      "name": "Plugins",
+      "target_dir": "$INSTALL_PATH$/Data",
+      "deploy_mode": "hardlink"
+    }
+  ],
+  "auto_tags": []
+}

@@ -81,6 +81,20 @@ Tool::Tool(const Json::Value& json_object)
     arguments_ = json_object["arguments"].asString();
     protontricks_arguments_ = json_object["protontricks_arguments"].asString();
     command_overwrite_ = json_object["command"].asString();
+
+    // Parse launcher-specific fields for Heroic support
+    if(json_object.isMember("launcher_type"))
+    {
+      launcher_type_ = static_cast<LauncherType>(json_object["launcher_type"].asInt());
+    }
+    if(json_object.isMember("launcher_identifier"))
+    {
+      launcher_identifier_ = json_object["launcher_identifier"].asString();
+    }
+    if(json_object.isMember("proton_path"))
+    {
+      proton_path_ = json_object["proton_path"].asString();
+    }
   }
 }
 
@@ -101,6 +115,37 @@ std::string Tool::getCommand(bool is_flatpak) const
     else
       command += "flatpak run com.valvesoftware.Steam ";
     return command + std::format("-applaunch {}", steam_app_id_);
+  }
+
+  // Heroic launcher support
+  if(launcher_type_ == LauncherType::heroic && runtime_ == protontricks)
+  {
+    if(!working_directory_.empty())
+    {
+      if(is_flatpak)
+        command += "--directory=" + encloseInQuotes(working_directory_.string());
+      else
+        command += "cd " + encloseInQuotes(working_directory_.string()) + "; ";
+    }
+
+    // Set Proton environment variables
+    appendEnvironmentVariables(command,
+                               { { "STEAM_COMPAT_DATA_PATH", prefix_path_.string() },
+                                 { "STEAM_COMPAT_CLIENT_INSTALL_PATH", "/usr" } },
+                               is_flatpak);
+    appendEnvironmentVariables(command, environment_variables_, is_flatpak);
+
+    if(!command.empty())
+      command += " ";
+
+    // Run through Proton
+    command += encloseInQuotes(proton_path_.string() + "/proton") + " run ";
+    command += encloseInQuotes(executable_path_);
+
+    if(!arguments_.empty())
+      command += " " + arguments_;
+
+    return command;
   }
 
   if(!working_directory_.empty())
@@ -160,6 +205,12 @@ Json::Value Tool::toJson() const
   json_object["arguments"] = arguments_;
   json_object["protontricks_arguments"] = protontricks_arguments_;
   json_object["command"] = command_overwrite_;
+
+  // Serialize launcher-specific fields
+  json_object["launcher_type"] = static_cast<int>(launcher_type_);
+  json_object["launcher_identifier"] = launcher_identifier_;
+  json_object["proton_path"] = proton_path_.string();
+
   return json_object;
 }
 
@@ -221,6 +272,21 @@ std::string Tool::getProtontricksArguments() const
 std::string Tool::getCommandOverwrite() const
 {
   return command_overwrite_;
+}
+
+LauncherType Tool::getLauncherType() const
+{
+  return launcher_type_;
+}
+
+std::string Tool::getLauncherIdentifier() const
+{
+  return launcher_identifier_;
+}
+
+std::filesystem::path Tool::getProtonPath() const
+{
+  return proton_path_;
 }
 
 void Tool::appendEnvironmentVariables(

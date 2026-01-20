@@ -73,3 +73,40 @@ TEST_CASE("State is serialized", "[tool]")
     REQUIRE(t.getRuntime() == t2.getRuntime());
   }
 }
+TEST_CASE("Heroic Proton commands are generated", "[tool]")
+{
+  // Test Heroic tool creation and command generation
+  Tool tool("fo4edit", "", "/tool/FO4Edit.exe", false, 0, "/tmp",
+            {}, "", "");
+  tool.launcher_type_ = LauncherType::heroic;
+  tool.launcher_identifier_ = "Fallout4";
+  tool.prefix_path_ = "/home/user/Games/Heroic/Prefixes/Fallout4";
+  tool.proton_path_ = "/home/user/.config/heroic/tools/proton/GE-Proton9-2";
+  tool.runtime_ = Tool::protontricks;
+
+  std::string cmd = tool.getCommand(false);
+  // Should contain Proton execution with proper env vars
+  REQUIRE(cmd.find("STEAM_COMPAT_DATA_PATH") != std::string::npos);
+  REQUIRE(cmd.find("STEAM_COMPAT_CLIENT_INSTALL_PATH=/usr") != std::string::npos);
+  REQUIRE(cmd.find("GE-Proton9-2/proton") != std::string::npos);
+  REQUIRE(cmd.find("FO4Edit.exe") != std::string::npos);
+}
+
+TEST_CASE("Heroic tool state is serialized", "[tool]")
+{
+  // Create a Heroic tool
+  Tool tool("fo4edit", "", "/tool/FO4Edit.exe", false, 0, "/tmp", {}, "", "");
+  tool.launcher_type_ = LauncherType::heroic;
+  tool.launcher_identifier_ = "Fallout4";
+  tool.prefix_path_ = "/home/user/Games/Heroic/Prefixes/Fallout4";
+  tool.proton_path_ = "/home/user/.config/heroic/tools/proton/GE-Proton9-2";
+  tool.runtime_ = Tool::protontricks;
+
+  // Serialize and deserialize
+  Tool tool2(tool.toJson());
+
+  REQUIRE(tool2.getLauncherType() == LauncherType::heroic);
+  REQUIRE(tool2.getLauncherIdentifier() == "Fallout4");
+  REQUIRE(tool2.getProtonPath() == tool.getProtonPath());
+  REQUIRE(tool2.getCommand(false) == tool.getCommand(false));
+}
