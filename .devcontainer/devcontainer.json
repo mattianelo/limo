@@ -3,6 +3,22 @@
     "build": {
         "dockerfile": "Dockerfile"
     },
+    "forwardPorts": [6000, 6001],
+    "runArgs": [
+        "--ipc=host",
+        "--device=/dev/dri:/dev/dri",
+        
+        // Pass host display environment
+        "--env", "DISPLAY=${localEnv:DISPLAY}",
+        "--env", "WAYLAND_DISPLAY=${localEnv:WAYLAND_DISPLAY}",
+        "--env", "XDG_RUNTIME_DIR=/tmp/runtime-vscode",
+        "--env", "QT_QPA_PLATFORM=wayland",
+
+        // Mount X11 socket (Fallback)
+        "--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw",
+        // Mount Wayland socket into a custom runtime dir
+        "--volume=${localEnv:XDG_RUNTIME_DIR}/${localEnv:WAYLAND_DISPLAY}:/tmp/runtime-vscode/${localEnv:WAYLAND_DISPLAY}"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
@@ -16,5 +32,7 @@
             }
         }
     },
-    "remoteUser": "vscode"
+    "remoteUser": "vscode",
+    // FIX: Use 'sudo' to fix ownership of the folder Docker created as root
+    "postCreateCommand": "sudo chown vscode:vscode /tmp/runtime-vscode && chmod 700 /tmp/runtime-vscode"
 }
