@@ -6,6 +6,7 @@
 #pragma once
 
 #include "editdeployerinfo.h"
+#include "launcher.h"
 #include <json/json.h>
 #include <string>
 #include <vector>
@@ -38,4 +39,8 @@ struct EditApplicationInfo
   std::string app_version;
   /*! \brief Steam app id of the added application. */
   long steam_app_id;
+  /*! \brief Launcher type (Steam or Heroic) for the application. */
+  LauncherType launcher = LauncherType::steam;
+  /*! \brief Launcher identifier (appID for Steam, appName for Heroic). */
+  std::string launcher_identifier = "";
 };

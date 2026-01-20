@@ -1,12 +1,16 @@
 #include "edittoolwidget.h"
 #include "importfromsteamdialog.h"
 #include "tablepushbutton.h"
+#include "core/launcher.h"
+#include "core/heroicdetector.h"
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QHeaderView>
+#include <QMessageBox>
 #include <QStandardPaths>
 #include <filesystem>
 #include <ranges>
+#include <json/json.h>
 
 namespace sfs = std::filesystem;
 
@@ -20,6 +24,15 @@ EditToolWidget::EditToolWidget(QWidget* parent) : QWidget{ parent }
           qOverload<int>(&QComboBox::currentIndexChanged),
           this,
           &EditToolWidget::modeBoxIndexChanged);
+
+  launcher_label_ = new QLabel("Launcher:", this);
+  launcher_label_->setToolTip("Which launcher hosts the game or application");
+  launcher_box_ = new QComboBox(this);
+  launcher_box_->addItems({ "Steam", "Heroic" });
+  connect(launcher_box_,
+          qOverload<int>(&QComboBox::currentIndexChanged),
+          this,
+          &EditToolWidget::launcherBoxIndexChanged);
 
   name_label_ = new QLabel("Name:", this);
   name_label_->setToolTip("The name of the tool");
@@ -84,6 +97,12 @@ EditToolWidget::EditToolWidget(QWidget* parent) : QWidget{ parent }
           this,
           &EditToolWidget::steamAppImported);
 
+  app_name_label_ = new QLabel("Heroic App Name:", this);
+  app_name_label_->setToolTip("Name of the game in Heroic Games Launcher");
+  app_name_field_ = new QComboBox(this);
+  app_name_import_button_ = new QPushButton("Detect Games", this);
+  connect(app_name_import_button_, &QPushButton::clicked, this, &EditToolWidget::detectHeroicGamesClicked);
+
   working_directory_label_ = new QLabel("Working directory:", this);
   working_directory_label_->setToolTip("Working directory in which to run the executable");
   working_directory_field_ =
@@ -131,50 +150,57 @@ EditToolWidget::EditToolWidget(QWidget* parent) : QWidget{ parent }
   layout->addWidget(mode_label_, 0, 0);
   layout->addWidget(mode_box_, 0, 1, 1, 3);
 
-  layout->addWidget(name_label_, 1, 0);
-  layout->addWidget(name_field_, 1, 1, 1, 3);
+  layout->addWidget(launcher_label_, 1, 0);
+  layout->addWidget(launcher_box_, 1, 1, 1, 3);
 
-  layout->addWidget(icon_label_, 2, 0);
-  layout->addWidget(icon_field_, 2, 1, 1, 2);
-  layout->addWidget(icon_picker_, 2, 3);
+  layout->addWidget(name_label_, 2, 0);
+  layout->addWidget(name_field_, 2, 1, 1, 3);
 
-  layout->addWidget(runtime_label_, 3, 0);
-  layout->addWidget(runtime_box_, 3, 1, 1, 3);
+  layout->addWidget(icon_label_, 3, 0);
+  layout->addWidget(icon_field_, 3, 1, 1, 2);
+  layout->addWidget(icon_picker_, 3, 3);
 
-  layout->addWidget(runtime_version_label_, 4, 0);
-  layout->addWidget(runtime_version_box_, 4, 1, 1, 3);
+  layout->addWidget(runtime_label_, 4, 0);
+  layout->addWidget(runtime_box_, 4, 1, 1, 3);
 
-  layout->addWidget(executable_label_, 5, 0);
-  layout->addWidget(executable_field_, 5, 1, 1, 2);
-  layout->addWidget(executable_picker_, 5, 3);
+  layout->addWidget(runtime_version_label_, 5, 0);
+  layout->addWidget(runtime_version_box_, 5, 1, 1, 3);
 
-  layout->addWidget(prefix_label_, 6, 0);
-  layout->addWidget(prefix_field_, 6, 1, 1, 2);
-  layout->addWidget(prefix_picker_, 6, 3);
+  layout->addWidget(executable_label_, 6, 0);
+  layout->addWidget(executable_field_, 6, 1, 1, 2);
+  layout->addWidget(executable_picker_, 6, 3);
 
-  layout->addWidget(app_id_label_, 7, 0);
-  layout->addWidget(app_id_field_, 7, 1);
-  layout->addWidget(app_id_import_button_, 7, 2, 1, 2);
+  layout->addWidget(prefix_label_, 7, 0);
+  layout->addWidget(prefix_field_, 7, 1, 1, 2);
+  layout->addWidget(prefix_picker_, 7, 3);
 
-  layout->addWidget(working_directory_label_, 8, 0);
-  layout->addWidget(working_directory_field_, 8, 1, 1, 2);
-  layout->addWidget(working_directory_picker_, 8, 3);
+  layout->addWidget(app_id_label_, 8, 0);
+  layout->addWidget(app_id_field_, 8, 1);
+  layout->addWidget(app_id_import_button_, 8, 2, 1, 2);
 
-  layout->addWidget(environment_label_, 9, 0);
+  layout->addWidget(app_name_label_, 9, 0);
+  layout->addWidget(app_name_field_, 9, 1);
+  layout->addWidget(app_name_import_button_, 9, 2, 1, 2);
 
-  layout->addWidget(environment_table_, 10, 0, 1, 4);
+  layout->addWidget(working_directory_label_, 10, 0);
+  layout->addWidget(working_directory_field_, 10, 1, 1, 2);
+  layout->addWidget(working_directory_picker_, 10, 3);
 
-  layout->addWidget(arguments_label_, 11, 0);
-  layout->addWidget(arguments_field_, 11, 1, 1, 3);
+  layout->addWidget(environment_label_, 11, 0);
 
-  layout->addWidget(protontricks_arguments_label_, 12, 0);
-  layout->addWidget(protontricks_arguments_field_, 12, 1, 1, 3);
+  layout->addWidget(environment_table_, 12, 0, 1, 4);
 
-  layout->addWidget(command_label_, 13, 0);
-  layout->addWidget(command_field_, 13, 1, 1, 3);
+  layout->addWidget(arguments_label_, 13, 0);
+  layout->addWidget(arguments_field_, 13, 1, 1, 3);
+
+  layout->addWidget(protontricks_arguments_label_, 14, 0);
+  layout->addWidget(protontricks_arguments_field_, 14, 1, 1, 3);
+
+  layout->addWidget(command_label_, 15, 0);
+  layout->addWidget(command_field_, 15, 1, 1, 3);
 
   layout->addItem(
-    new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding), 13, 0, 3, 1);
+    new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding), 16, 0, 3, 1);
   layout->setColumnStretch(1, 1);
 
   setLayout(layout);
@@ -190,6 +216,8 @@ Tool EditToolWidget::getTool()
              command_field_->text().toStdString() };
 
   const int runtime = runtime_box_->currentIndex();
+  const bool is_heroic = launcher_box_->currentIndex() == LAUNCHER_HEROIC_INDEX;
+  
   if(runtime == RUNTIME_STEAM_INDEX)
     return { name_field_->text().toStdString(),
              icon_field_->text().toStdString(),
@@ -218,7 +246,47 @@ Tool EditToolWidget::getTool()
              working_directory_field_->text().toStdString(),
              variable_map,
              arguments_field_->text().toStdString() };
+  
   // runtime == RUNTIME_PROTONTRICKS_INDEX
+  if(is_heroic)
+  {
+    // For Heroic launcher with Protontricks
+    auto app_name = app_name_field_->currentData(Qt::UserRole).toString().toStdString();
+    auto heroic_game = HeroicDetector::getGameConfig(app_name);
+    
+    if(heroic_game)
+    {
+      // Build a JSON representation to construct the tool properly
+      Json::Value json;
+      json["name"] = name_field_->text().toStdString();
+      json["icon_path"] = icon_field_->text().toStdString();
+      json["executable_path"] = executable_field_->text().toStdString();
+      json["runtime"] = "protontricks";
+      json["launcher"] = "heroic";
+      json["appName"] = app_name;
+      json["working_directory"] = working_directory_field_->text().toStdString();
+      json["arguments"] = arguments_field_->text().toStdString();
+      json["protontricks_arguments"] = protontricks_arguments_field_->text().toStdString();
+      
+      // Add environment variables
+      Json::Value env_json(Json::arrayValue);
+      for(const auto& [variable, value] : environment_variables)
+      {
+        if(!variable.isEmpty())
+        {
+          Json::Value var_obj;
+          var_obj["variable"] = variable.toStdString();
+          var_obj["value"] = value.toStdString();
+          env_json.append(var_obj);
+        }
+      }
+      json["environment_variables"] = env_json;
+      
+      return Tool(json);
+    }
+  }
+  
+  // Fall back to Steam protontricks
   return { name_field_->text().toStdString(),
            icon_field_->text().toStdString(),
            executable_field_->text().toStdString(),
@@ -270,6 +338,12 @@ void EditToolWidget::init(const Tool& tool)
     if(icon.availableSizes().size() > 0)
       icon_picker_->setIcon(icon);
   }
+  
+  // Set launcher type
+  int launcher_idx = (tool.getLauncherType() == LauncherType::heroic) ?
+                     LAUNCHER_HEROIC_INDEX : LAUNCHER_STEAM_INDEX;
+  launcher_box_->setCurrentIndex(launcher_idx);
+  
   if(tool.getCommandOverwrite().empty())
   {
     mode_box_->setCurrentIndex(MODE_GUIDED_INDEX);
@@ -289,8 +363,20 @@ void EditToolWidget::init(const Tool& tool)
                                                                       : VERSION_NATIVE_INDEX);
     if(!prefix_field_->isHidden())
       prefix_field_->setText(tool.getPrefixPath().c_str());
-    if(!app_id_field_->isHidden())
+    if(!app_id_field_->isHidden() && launcher_idx == LAUNCHER_STEAM_INDEX)
       app_id_field_->setText(QString::number(tool.getSteamAppId()));
+    
+    // Set Heroic app name if applicable
+    if(!app_name_field_->isHidden() && launcher_idx == LAUNCHER_HEROIC_INDEX)
+    {
+      auto app_name = tool.getLauncherIdentifier();
+      int idx = app_name_field_->findData(QString::fromStdString(app_name));
+      if(idx >= 0)
+      {
+        app_name_field_->setCurrentIndex(idx);
+      }
+    }
+    
     if(!working_directory_field_->isHidden())
       working_directory_field_->setText(tool.getWorkingDirectory().c_str());
     if(!environment_table_->isHidden())
@@ -347,12 +433,25 @@ void EditToolWidget::updateChildrenVisibility()
 
   const bool app_id_visible =
     (runtime == RUNTIME_PROTONTRICKS_INDEX || runtime == RUNTIME_STEAM_INDEX) && !command_only;
-  app_id_label_->setVisible(app_id_visible);
-  app_id_field_->setVisible(app_id_visible);
-  app_id_import_button_->setVisible(app_id_visible);
-  app_id_field_->setToolTip(runtime == RUNTIME_PROTONTRICKS_INDEX
-                              ? "Steam app ID for the proton prefix"
-                              : "Steam app ID to be run");
+  
+  const bool is_heroic = launcher_box_->currentIndex() == LAUNCHER_HEROIC_INDEX;
+  const bool steam_app_id_visible = app_id_visible && !is_heroic;
+  app_id_label_->setVisible(steam_app_id_visible);
+  app_id_field_->setVisible(steam_app_id_visible);
+  app_id_import_button_->setVisible(steam_app_id_visible);
+  
+  const bool app_name_visible = app_id_visible && is_heroic && runtime == RUNTIME_PROTONTRICKS_INDEX;
+  app_name_label_->setVisible(app_name_visible);
+  app_name_field_->setVisible(app_name_visible);
+  app_name_import_button_->setVisible(app_name_visible);
+  
+  if(steam_app_id_visible)
+  {
+    app_id_label_->setText("Steam App ID:");
+    app_id_field_->setToolTip(runtime == RUNTIME_PROTONTRICKS_INDEX
+                                ? "Steam app ID for the proton prefix"
+                                : "Steam app ID to be run");
+  }
 
   const bool working_dir_visible = runtime != RUNTIME_STEAM_INDEX && !command_only;
   working_directory_label_->setVisible(working_dir_visible);
@@ -540,5 +639,40 @@ void EditToolWidget::steamAppImported(QString name,
       icon_picker_->setIcon(icon.availableSizes().size() > 0 ? icon
                                                              : QIcon::fromTheme("folder-open"));
     }
+  }
+}
+
+void EditToolWidget::launcherBoxIndexChanged(int index)
+{
+  if(index == LAUNCHER_HEROIC_INDEX && HeroicDetector::isHeroicInstalled())
+  {
+    detectHeroicGamesClicked();
+  }
+  updateChildrenVisibility();
+}
+
+void EditToolWidget::detectHeroicGamesClicked()
+{
+  if(!HeroicDetector::isHeroicInstalled())
+  {
+    QMessageBox::warning(this, "Not Found", "Heroic Games Launcher not found on this system");
+    return;
+  }
+
+  auto games = HeroicDetector::detectGames();
+  app_name_field_->blockSignals(true);
+  app_name_field_->clear();
+
+  for(const auto& game : games)
+  {
+    app_name_field_->addItem(QString::fromStdString(game.title),
+                             QString::fromStdString(game.app_name));
+  }
+
+  app_name_field_->blockSignals(false);
+
+  if(games.empty())
+  {
+    QMessageBox::information(this, "No Games", "No games found in Heroic Games Launcher");
   }
 }

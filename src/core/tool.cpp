@@ -60,15 +60,87 @@ Tool::Tool(const Json::Value& json_object)
   if(!json_object.isMember("use_flatpak_runtime")) // Initialize from old format
   {
     name_ = json_object["name"].asString();
-    icon_path_ = "";
+    icon_path_ = json_object["icon_path"].asString();
     command_overwrite_ = json_object["command"].asString();
+    
+    // Parse additional fields that might be in old format
+    if(json_object.isMember("executable_path"))
+      executable_path_ = json_object["executable_path"].asString();
+    if(json_object.isMember("working_directory"))
+      working_directory_ = json_object["working_directory"].asString();
+    if(json_object.isMember("arguments"))
+      arguments_ = json_object["arguments"].asString();
+    if(json_object.isMember("protontricks_arguments"))
+      protontricks_arguments_ = json_object["protontricks_arguments"].asString();
+    
+    // Parse runtime - handle both string and int formats
+    if(json_object.isMember("runtime"))
+    {
+      if(json_object["runtime"].isString())
+      {
+        std::string runtime_str = json_object["runtime"].asString();
+        if(runtime_str == "protontricks") runtime_ = Runtime::protontricks;
+        else if(runtime_str == "wine") runtime_ = Runtime::wine;
+        else if(runtime_str == "steam") runtime_ = Runtime::steam;
+        else runtime_ = Runtime::native;
+      }
+      else
+      {
+        runtime_ = static_cast<Runtime>(json_object["runtime"].asInt());
+      }
+    }
+    
+    // Parse launcher-specific fields for Heroic support (even in old format)
+    if(json_object.isMember("launcher"))
+    {
+      // Handle string-based launcher field
+      std::string launcher_str = json_object["launcher"].asString();
+      if(launcher_str == "heroic")
+      {
+        launcher_type_ = LauncherType::heroic;
+      }
+      else
+      {
+        launcher_type_ = LauncherType::steam;
+      }
+    }
+    if(json_object.isMember("launcher_type"))
+    {
+      launcher_type_ = static_cast<LauncherType>(json_object["launcher_type"].asInt());
+    }
+    if(json_object.isMember("appName"))
+    {
+      launcher_identifier_ = json_object["appName"].asString();
+    }
+    if(json_object.isMember("launcher_identifier"))
+    {
+      launcher_identifier_ = json_object["launcher_identifier"].asString();
+    }
+    if(json_object.isMember("proton_path"))
+    {
+      proton_path_ = json_object["proton_path"].asString();
+    }
   }
   else
   {
     name_ = json_object["name"].asString();
     icon_path_ = json_object["icon_path"].asString();
     executable_path_ = json_object["executable_path"].asString();
-    runtime_ = static_cast<Runtime>(json_object["runtime"].asInt());
+    
+    // Parse runtime - handle both string and int formats
+    if(json_object["runtime"].isString())
+    {
+      std::string runtime_str = json_object["runtime"].asString();
+      if(runtime_str == "protontricks") runtime_ = Runtime::protontricks;
+      else if(runtime_str == "wine") runtime_ = Runtime::wine;
+      else if(runtime_str == "steam") runtime_ = Runtime::steam;
+      else runtime_ = Runtime::native;
+    }
+    else
+    {
+      runtime_ = static_cast<Runtime>(json_object["runtime"].asInt());
+    }
+    
     use_flatpak_runtime_ = json_object["use_flatpak_runtime"].asBool();
     prefix_path_ = json_object["prefix_path"].asString();
     steam_app_id_ = json_object["steam_app_id"].asInt();
@@ -83,9 +155,26 @@ Tool::Tool(const Json::Value& json_object)
     command_overwrite_ = json_object["command"].asString();
 
     // Parse launcher-specific fields for Heroic support
+    if(json_object.isMember("launcher"))
+    {
+      // Handle string-based launcher field
+      std::string launcher_str = json_object["launcher"].asString();
+      if(launcher_str == "heroic")
+      {
+        launcher_type_ = LauncherType::heroic;
+      }
+      else
+      {
+        launcher_type_ = LauncherType::steam;
+      }
+    }
     if(json_object.isMember("launcher_type"))
     {
       launcher_type_ = static_cast<LauncherType>(json_object["launcher_type"].asInt());
+    }
+    if(json_object.isMember("appName"))
+    {
+      launcher_identifier_ = json_object["appName"].asString();
     }
     if(json_object.isMember("launcher_identifier"))
     {

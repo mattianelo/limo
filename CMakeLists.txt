@@ -172,6 +172,10 @@ set(CORE_SOURCES
         src/core/tagconditionnode.h
         src/core/tool.cpp
         src/core/tool.h
+        src/core/launcher.cpp
+        src/core/launcher.h
+        src/core/heroicdetector.cpp
+        src/core/heroicdetector.h
         src/core/versionchangelog.cpp
         src/core/versionchangelog.h
         src/core/wildcardmatching.cpp

@@ -7,6 +7,8 @@
 
 #include "../core/editapplicationinfo.h"
 #include "../core/editdeployerinfo.h"
+#include "../core/launcher.h"
+#include "../core/heroicdetector.h"
 #include "importfromsteamdialog.h"
 #include <QDialog>
 #include <json/json.h>
@@ -95,6 +97,10 @@ private:
   bool is_flatpak_;
   /*! \brief Reusable dialog for importing data from installed Steam apps. */
   std::unique_ptr<ImportFromSteamDialog> import_from_steam_dialog_;
+  /*! \brief Current launcher type (Steam or Heroic). */
+  LauncherType launcher_type_ = LauncherType::steam;
+  /*! \brief Current launcher identifier (appID for Steam, appName for Heroic). */
+  std::string launcher_identifier_ = "";
 
   /*!
    * \brief Set the enabled state of this dialogs OK button.
@@ -118,6 +124,8 @@ private:
    *  if present, it's prefix directory.
    */
   void initDefaultAppConfig();
+  /*! \brief Initializes deployers from a Heroic app configuration. */
+  void initConfigFromHeroic(const std::string& app_name);
 
 public:
   /*!

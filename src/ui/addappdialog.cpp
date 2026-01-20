@@ -11,6 +11,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QStandardPaths>
+#include <QString>
 #include <filesystem>
 #include <fstream>
 
@@ -106,6 +107,15 @@ void AddAppDialog::initConfigForApp()
 {
   deployers_.clear();
   auto_tags_.clear();
+  
+  // 1. Try Heroic config first if launcher is set to Heroic
+  if(launcher_type_ == LauncherType::heroic && !launcher_identifier_.empty())
+  {
+    initConfigFromHeroic(launcher_identifier_);
+    return;
+  }
+  
+  // 2. Try Steam config
   sfs::path config_path =
     sfs::path(is_flatpak_ ? "/app" : APP_INSTALL_PREFIX) / "share/limo/steam_app_configs";
   // Overwrite for local build
@@ -298,6 +308,110 @@ void AddAppDialog::initDefaultAppConfig()
     "Import deployers targeting the installation and prefix directories");
 }
 
+void AddAppDialog::initConfigFromHeroic(const std::string& app_name)
+{
+  sfs::path config_path = "heroic_app_configs";
+  // Overwrite for local build
+  if(!is_flatpak_ && sfs::exists("heroic_app_configs"))
+  {
+    config_path = "heroic_app_configs";
+  }
+  else
+  {
+    config_path = sfs::path(is_flatpak_ ? "/app" : APP_INSTALL_PREFIX) / "share/limo/heroic_app_configs";
+  }
+
+  Log::debug("Heroic config path: " + config_path.string());
+
+  config_path /= (app_name + ".json");
+  if(!sfs::exists(config_path))
+  {
+    Log::debug("Heroic config not found at: " + config_path.string());
+    initDefaultAppConfig();
+    return;
+  }
+
+  Json::Value json;
+  std::ifstream file(config_path, std::fstream::binary);
+  if(!file.is_open())
+  {
+    Log::debug("Failed to open Heroic app config at: " + config_path.string());
+    initDefaultAppConfig();
+    return;
+  }
+
+  try
+  {
+    file >> json;
+  }
+  catch(...)
+  {
+    Log::debug("Failed to parse Heroic app config at: " + config_path.string());
+    initDefaultAppConfig();
+    return;
+  }
+
+  Log::debug(std::format("Reading Heroic app config for {}", app_name));
+  try
+  {
+    // Parse deployers from config
+    for(int i = 0; i < json["deployers"].size(); i++)
+    {
+      Json::Value deployer = json["deployers"][i];
+      EditDeployerInfo info;
+
+      for(const auto& key : JSON_DEPLOYER_MANDATORY_KEYS)
+      {
+        if(deployer[key].isNull())
+        {
+          Log::debug(std::format("Heroic app config deployer {} does not contain key {}", i, key));
+          continue;
+        }
+      }
+
+      const std::string type = deployer[JSON_DEPLOYERS_TYPE].asString();
+      if(str::find(DeployerFactory::DEPLOYER_TYPES, type) == DeployerFactory::DEPLOYER_TYPES.end())
+      {
+        Log::debug(std::format("Unknown deployer type: {}", type));
+        continue;
+      }
+
+      info.type = type;
+      info.name = deployer[JSON_DEPLOYERS_NAME].asString();
+      info.target_dir = deployer[JSON_DEPLOYERS_TARGET].asString();
+      
+      // Convert deploy mode string to enum
+      QString deploy_mode = deployer[JSON_DEPLOYERS_MODE].asString().c_str();
+      deploy_mode = deploy_mode.toLower();
+      if(deploy_mode == "hard link")
+        info.deploy_mode = Deployer::hard_link;
+      else if(deploy_mode == "sym link" || deploy_mode == "soft link")
+        info.deploy_mode = Deployer::sym_link;
+      else if(deploy_mode == "copy")
+        info.deploy_mode = Deployer::copy;
+      else
+        info.deploy_mode = Deployer::hard_link;  // Default
+      
+      if(!deployer[JSON_DEPLOYERS_SOURCE].isNull())
+      {
+        info.source_dir = deployer[JSON_DEPLOYERS_SOURCE].asString();
+      }
+      deployers_.push_back(info);
+    }
+
+    // Parse auto tags from config
+    for(int i = 0; i < json["auto_tags"].size(); i++)
+    {
+      auto_tags_.push_back(json["auto_tags"][i]);
+    }
+  }
+  catch(const std::exception& e)
+  {
+    Log::debug(std::format("Error parsing Heroic app config: {}", e.what()));
+    initDefaultAppConfig();
+  }
+}
+
 void AddAppDialog::setEditMode(const QString& name,
                                const QString& app_version,
                                const QString& path,
@@ -371,6 +485,8 @@ void AddAppDialog::on_buttonBox_accepted()
   info.command = ui->command_field->text().toStdString();
   info.icon_path = ui->icon_field->text().toStdString();
   info.steam_app_id = steam_app_id_;
+  info.launcher = launcher_type_;
+  info.launcher_identifier = launcher_identifier_;
   if(edit_mode_)
   {
     info.move_staging_dir = ui->move_dir_box->checkState() == Qt::Checked;

@@ -1,0 +1,13 @@
+{
+	"command" : "",
+	"icon_path" : "",
+	"name" : "test",
+	"profiles" : 
+	[
+		{
+			"app_version" : "",
+			"name" : "Default"
+		}
+	],
+	"steam_app_id" : 0
+}

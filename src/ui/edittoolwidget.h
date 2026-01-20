@@ -6,6 +6,8 @@
 #pragma once
 
 #include "core/tool.h"
+#include "core/launcher.h"
+#include "core/heroicdetector.h"
 #include "importfromsteamdialog.h"
 #include "validatinglineedit.h"
 #include <QComboBox>
@@ -70,6 +72,10 @@ private:
   static constexpr int VERSION_NATIVE_INDEX = 0;
   /*! \brief Index representing flatpak version in the runtime version box. */
   static constexpr int VERSION_FLATPAK_INDEX = 1;
+  /*! \brief Index representing Steam launcher in the launcher box. */
+  static constexpr int LAUNCHER_STEAM_INDEX = 0;
+  /*! \brief Index representing Heroic launcher in the launcher box. */
+  static constexpr int LAUNCHER_HEROIC_INDEX = 1;
 
   /*! \brief Label used for the mode. */
   QLabel* mode_label_;
@@ -135,6 +141,16 @@ private:
   ValidatingLineEdit* command_field_;
   /*! \brief Dialog used to import app ids and icon paths from steam. */
   ImportFromSteamDialog* import_dialog_;
+  /*! \brief Label used for the launcher. */
+  QLabel* launcher_label_;
+  /*! \brief Combo box used to select the launcher. */
+  QComboBox* launcher_box_;
+  /*! \brief Label used for the Heroic app name. */
+  QLabel* app_name_label_;
+  /*! \brief Combo box used to select the Heroic app name. */
+  QComboBox* app_name_field_;
+  /*! \brief Push button to detect Heroic games. */
+  QPushButton* app_name_import_button_;
 
   /*! \brief Contains pairs of environment variables and their assigned values. */
   std::vector<std::pair<QString, QString>> environment_variables;
@@ -202,6 +218,13 @@ private slots:
   void textFieldEdited(QString new_text);
   /*! \brief Opens an ImportFromSteamDialog. */
   void importButtonClicked();
+  /*!
+   * \brief Updates the launcher selection when launcher box changes.
+   * \param index The new launcher index.
+   */
+  void launcherBoxIndexChanged(int index);
+  /*! \brief Detects and populates Heroic games. */
+  void detectHeroicGamesClicked();
   /*!
    * \brief Updates the app id field and if runtime is steam also the icon path field
    * with given data.

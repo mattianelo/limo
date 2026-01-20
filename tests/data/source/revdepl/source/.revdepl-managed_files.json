@@ -1,32 +1,5 @@
 {
-	"deployed_loadorder" : 
-	[
-		{
-			"enabled" : true,
-			"path" : "1"
-		},
-		{
-			"enabled" : false,
-			"path" : "a/1"
-		},
-		{
-			"enabled" : true,
-			"path" : "c/1"
-		},
-		{
-			"enabled" : true,
-			"path" : "d/some file.txt"
-		},
-		{
-			"enabled" : true,
-			"path" : "a/a/1"
-		},
-		{
-			"enabled" : true,
-			"path" : "a/a/2"
-		}
-	],
-	"deployed_profile" : 0,
+	"deployed_profile" : -1,
 	"managed_files" : 
 	[
 		{
@@ -37,7 +10,7 @@
 					"path" : "1"
 				},
 				{
-					"enabled" : false,
+					"enabled" : true,
 					"path" : "a/1"
 				},
 				{
@@ -60,6 +33,6 @@
 			"profile" : 0
 		}
 	],
-	"number_of_files_in_target" : 13,
+	"number_of_files_in_target" : 19,
 	"separate_profile_dirs" : false
 }
